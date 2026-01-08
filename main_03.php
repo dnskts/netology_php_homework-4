@@ -17,10 +17,13 @@ $operations = [
 
 $items = [];
 
-function ask(string $question): string
+function clearScreen(): void
 {
-    echo $question . PHP_EOL . '> ';
-    return trim(fgets(STDIN));
+    if (stripos(PHP_OS, 'WIN') === 0) {
+        system('cls');
+    } else {
+        system('clear');
+    }
 }
 
 function printItems(array $items): void
@@ -35,21 +38,49 @@ function printItems(array $items): void
     }
 }
 
-function addItem(array $items): array
+function showMenu(array $operations): void
 {
-    $name = ask('Введите название товара:');
-    $quantity = ask('Введите количество:');
-
-    if (array_key_exists($name, $items)) {
-        $items[$name] = $items[$name] + (int) $quantity;
-    } else {
-        $items[$name] = (int) $quantity;
-    }
-    
-    return $items;
+    echo 'Выберите операцию для выполнения: ' . PHP_EOL;
+    echo implode(PHP_EOL, $operations) . PHP_EOL . '> ';
 }
 
-function deleteItem(array $items): array
+function ask(string $question): string
+{
+    echo $question . PHP_EOL . '> ';
+    return trim(fgets(STDIN));
+}
+
+function askForOperation(array $items, array $operations): int
+{
+    do {
+        printItems($items);
+        showMenu($operations);
+        
+        $operationNumber = (int) trim(fgets(STDIN));
+
+        if (!array_key_exists($operationNumber, $operations)) {
+            clearScreen();
+            echo '!!! Неизвестный номер операции, повторите попытку.' . PHP_EOL;
+        }
+
+    } while (!array_key_exists($operationNumber, $operations));
+
+    return $operationNumber;
+}
+
+function addItem(array &$items): void
+{
+    $name = ask('Введите название товара:');
+    $quantity = (int) ask('Введите количество:');
+
+    if (array_key_exists($name, $items)) {
+        $items[$name] = $items[$name] + $quantity;
+    } else {
+        $items[$name] = $quantity;
+    }
+}
+
+function deleteItem(array &$items): void
 {
     printItems($items);
     $name = ask('Введите название товара для удаления:');
@@ -60,23 +91,29 @@ function deleteItem(array $items): array
     } else {
         echo "Товар '$name' не найден." . PHP_EOL;
     }
-    
-    return $items;
 }
 
-function editItem(array $items): array
+function showItems(array $items): void
+{
+    printItems($items);
+    echo 'Всего ' . count($items) . ' позиций.' . PHP_EOL;
+    echo 'Нажмите Enter для продолжения';
+    fgets(STDIN);
+}
+
+function editItem(array &$items): void
 {
     printItems($items);
     $oldName = ask('Введите название товара, который хотите изменить:');
     
     if (!array_key_exists($oldName, $items)) {
         echo "Товар '$oldName' не найден." . PHP_EOL;
-        return $items;
+        return;
     }
     
     $newName = ask('Введите новое название (или оставьте пустым):');
     $newQuantity = ask('Введите новое количество (или оставьте пустым):');
-    
+
     $quantity = $items[$oldName];
 
     if ($newName !== '') {
@@ -91,48 +128,30 @@ function editItem(array $items): array
     $items[$oldName] = $quantity;
     
     echo "Товар изменён!" . PHP_EOL;
-    
-    return $items;
 }
 
 do {
-    system('cls');
+    clearScreen();
 
-    do {
-        printItems($items);
-        
-        echo PHP_EOL . 'Выберите операцию для выполнения: ' . PHP_EOL;
-        echo implode(PHP_EOL, $operations) . PHP_EOL . '> ';
-        
-        $operationNumber = (int) trim(fgets(STDIN));
-
-        if (!array_key_exists($operationNumber, $operations)) {
-            system('cls');
-            echo '!!! Неизвестный номер операции, повторите попытку.' . PHP_EOL;
-        }
-
-    } while (!array_key_exists($operationNumber, $operations));
+    $operationNumber = askForOperation($items, $operations);
 
     echo 'Выбрана операция: ' . $operations[$operationNumber] . PHP_EOL;
 
     switch ($operationNumber) {
         case OPERATION_ADD:
-            $items = addItem($items);
+            addItem($items);
             break;
 
         case OPERATION_DELETE:
-            $items = deleteItem($items);
+            deleteItem($items);
             break;
 
         case OPERATION_PRINT:
-            printItems($items);
-            echo 'Всего ' . count($items) . ' позиций.' . PHP_EOL;
-            echo 'Нажмите Enter для продолжения';
-            fgets(STDIN);
+            showItems($items);
             break;
 
         case OPERATION_EDIT:
-            $items = editItem($items);
+            editItem($items);
             break;
     }
 
